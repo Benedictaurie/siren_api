@@ -23,4 +23,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/reservations/{id}/approve', [ReservationController::class, 'approve']);
         Route::put('/payments/{id}/confirm', [ReservationController::class, 'confirmPayment']);
     });
+
+    // Route untuk redirect ke Google (biasanya dipanggil dari React)
+    Route::get('/auth/google/redirect', [AuthController::class, 'getGoogleRedirectUrl']);
+
+    // Route Callback yang Anda daftarkan di Google Console tadi
+    Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 });
