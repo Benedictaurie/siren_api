@@ -14,12 +14,6 @@ use Illuminate\Support\Facades\DB;
 
 class BuildingController extends Controller
 {
-    // Jika nanti ada BuildingAvailabilityService, bisa ditaruh di constructor seperti contoh ActivityPackageController
-    // public function __construct()
-    // {
-    //     // 
-    // }
-
     /**
      * Display a listing of the resource.
      */
@@ -28,14 +22,14 @@ class BuildingController extends Controller
         // Hanya tampilkan gedung yang statusnya bukan inactive (sesuai bisnis proses)
         $buildings = Building::where('status', '!=', 'inactive')->get();
         $buildings->load(['images', 'rates']); // Load relasi images dan rates
-        return new ApiResponseResources(true, 'Buildings retrieved successfully', $buildings);
+        return new ApiResponseResources(true, 'Data gedung berhasil diambil.', $buildings);
     }
 
     public function adminIndex()
     {
         $buildings = Building::all();
         $buildings->load(['images', 'rates']);
-        return new ApiResponseResources(true, 'Buildings retrieved successfully', $buildings);
+        return new ApiResponseResources(true, 'Data gedung berhasil diambil.', $buildings);
     }
 
     /**
@@ -44,24 +38,27 @@ class BuildingController extends Controller
     public function store(Request $request)
     {
         $messages = [
-            'name.required' => 'Name is required',
-            'name.max' => 'Name may not be greater than 255 characters!',
-            'address.required' => 'Address is required',
-            'description.required' => 'Fill the description here',
-            'capacity.numeric' => 'Capacity must be entered as a number',
-            'status.in' => 'Status must be active, maintenance, or inactive',
-            'image.array' => 'The image field must be an array.',
-            'image.max' => 'You can only upload a maximum of :max images.',
-            'image.*.image' => 'The uploaded file must be an image (jpeg, png, jpg, gif, or svg).',
-            'image.*.mimes' => 'The image file format is invalid. Only :values formats are allowed.',
-            'image.*.max' => 'The image file size may not exceed :max kilobytes.',
+            'name.required' => 'Nama gedung wajib diisi.',
+            'name.max' => 'Nama gedung tidak boleh lebih dari 255 karakter!',
+            'address.required' => 'Alamat wajib diisi.',
+            'description.required' => 'Deskripsi wajib diisi.',
+            'capacity.numeric' => 'Kapasitas harus berupa angka.',
+            'status.in' => 'Status harus berupa active, maintenance, atau inactive.',
+            'image.array' => 'Format gambar harus berupa array.',
+            'image.max' => 'Anda hanya dapat mengunggah maksimal :max gambar.',
+            'image.*.image' => 'File yang diunggah harus berupa gambar (jpeg, png, jpg, gif, svg, atau webp).',
+            'image.*.mimes' => 'Format file gambar tidak valid. Hanya format :values yang diperbolehkan.',
+            'image.*.max' => 'Ukuran file gambar tidak boleh melebihi :max kilobyte.',
             // Validasi untuk Rates (Tarif)
-            'rates.required' => 'At least one rate is required',
-            'rates.array' => 'Rates must be an array',
-            'rates.*.category.required' => 'Rate category is required',
-            'rates.*.category.in' => 'Rate category must be commercial, social, or all',
-            'rates.*.price.required' => 'Rate price is required',
-            'rates.*.price.numeric' => 'Rate price must be entered as a number',
+            'rates.required' => 'Minimal satu tarif sewa wajib diisi.',
+            'rates.array' => 'Format tarif sewa harus berupa array.',
+            'rates.min' => 'Minimal satu tarif sewa wajib diisi.',
+            'rates.*.category.required' => 'Kategori tarif wajib diisi.',
+            'rates.*.category.in' => 'Kategori tarif harus berupa commercial, social, atau all.',
+            'rates.*.price.required' => 'Harga tarif wajib diisi.',
+            'rates.*.price.numeric' => 'Harga tarif harus berupa angka.',
+            'rates.*.min_hours.integer' => 'Minimal jam harus berupa bilangan bulat.',
+            'rates.*.max_hours.integer' => 'Maksimal jam harus berupa bilangan bulat.',
         ];
 
         $validator = Validator::make($request->all(), [
@@ -115,8 +112,8 @@ class BuildingController extends Controller
             // 3. Simpan Gambar Menggunakan Relasi Polimorfik
             if ($request->hasFile("image")) {
                 foreach ($request->file('image') as $imageFile) {
-                    $path = $imageFile->store('buildings/images', 'public'); 
-                    
+                    $path = $imageFile->store('buildings/images', 'public');
+
                     $building->images()->create([
                         'image' => $path,
                     ]);
@@ -125,11 +122,10 @@ class BuildingController extends Controller
 
             DB::commit();
 
-            return new ApiResponseResources(true, 'Building Saved Successfully!', $building->load(['images', 'rates']));
-
+            return new ApiResponseResources(true, 'Gedung berhasil disimpan!', $building->load(['images', 'rates']));
         } catch (\Exception $e) {
             DB::rollBack();
-            return new ApiResponseResources(false, 'Failed to save Building! ' . $e->getMessage(), null, 500);
+            return new ApiResponseResources(false, 'Gagal menyimpan data gedung! ' . $e->getMessage(), null, 500);
         }
     }
 
@@ -141,10 +137,10 @@ class BuildingController extends Controller
         $building = Building::find($id);
 
         if (!$building) {
-            return new ApiResponseResources(false, 'Building Not Found!', null, 404);
+            return new ApiResponseResources(false, 'Gedung tidak ditemukan!', null, 404);
         }
 
-        return new ApiResponseResources(true, 'Building Found!', $building->load(['images', 'rates', 'reviews']));
+        return new ApiResponseResources(true, 'Data gedung ditemukan!', $building->load(['images', 'rates', 'reviews']));
     }
 
     /**
@@ -157,10 +153,10 @@ class BuildingController extends Controller
             ->first();
 
         if (!$building) {
-            return new ApiResponseResources(false, 'Building Not Found!', null, 404);
+            return new ApiResponseResources(false, 'Gedung tidak ditemukan!', null, 404);
         }
 
-        return new ApiResponseResources(true, 'Building Found!', $building->load(['images', 'rates', 'reviews']));
+        return new ApiResponseResources(true, 'Data gedung ditemukan!', $building->load(['images', 'rates', 'reviews']));
     }
 
     /**
@@ -171,19 +167,26 @@ class BuildingController extends Controller
         $building = Building::find($id);
 
         if (!$building) {
-            return new ApiResponseResources(false, 'Building Not Found!', null, 404);
+            return new ApiResponseResources(false, 'Gedung tidak ditemukan!', null, 404);
         }
 
         $messages = [
-            'name.required' => 'Name is required',
-            'name.max' => 'Name may not be greater than 255 characters!',
-            'address.required' => 'Address is required',
-            'description.required' => 'Fill the description here',
-            'capacity.numeric' => 'Capacity must be entered as a number',
-            'status.in' => 'Status must be active, maintenance, or inactive',
-            'image.array' => 'The image field must be an array.',
-            'image.max' => 'You can only upload a maximum of :max images.',
-            'image.*.image' => 'The uploaded file must be an image.',
+            'name.required' => 'Nama gedung wajib diisi.',
+            'name.max' => 'Nama gedung tidak boleh lebih dari 255 karakter!',
+            'address.required' => 'Alamat wajib diisi.',
+            'description.required' => 'Deskripsi wajib diisi.',
+            'capacity.numeric' => 'Kapasitas harus berupa angka.',
+            'status.in' => 'Status harus berupa active, maintenance, atau inactive.',
+            'image.array' => 'Format gambar harus berupa array.',
+            'image.max' => 'Anda hanya dapat mengunggah maksimal :max gambar.',
+            'image.*.image' => 'File yang diunggah harus berupa gambar.',
+            'image.*.mimes' => 'Format file gambar tidak valid. Hanya format :values yang diperbolehkan.',
+            'image.*.max' => 'Ukuran file gambar tidak boleh melebihi :max kilobyte.',
+            'rates.array' => 'Format tarif sewa harus berupa array.',
+            'rates.*.category.required_with' => 'Kategori tarif wajib diisi.',
+            'rates.*.category.in' => 'Kategori tarif harus berupa commercial, social, atau all.',
+            'rates.*.price.required_with' => 'Harga tarif wajib diisi.',
+            'rates.*.price.numeric' => 'Harga tarif harus berupa angka.',
         ];
 
         $validator = Validator::make($request->all(), [
@@ -249,11 +252,10 @@ class BuildingController extends Controller
 
             DB::commit();
 
-            return new ApiResponseResources(true, 'Building Successfully Updated!', $building->load(['images', 'rates']));
-
+            return new ApiResponseResources(true, 'Data gedung berhasil diperbarui!', $building->load(['images', 'rates']));
         } catch (\Exception $e) {
             DB::rollBack();
-            return new ApiResponseResources(false, 'Failed to update Building! ' . $e->getMessage(), null, 500);
+            return new ApiResponseResources(false, 'Gagal memperbarui data gedung! ' . $e->getMessage(), null, 500);
         }
     }
 
@@ -265,7 +267,7 @@ class BuildingController extends Controller
         $building = Building::find($id);
 
         if (!$building) {
-            return new ApiResponseResources(false, 'Building Not Found!', null, 404);
+            return new ApiResponseResources(false, 'Gedung tidak ditemukan!', null, 404);
         }
 
         DB::beginTransaction();
@@ -282,11 +284,10 @@ class BuildingController extends Controller
             $building->delete();
 
             DB::commit();
-            return new ApiResponseResources(true, 'Building Successfully Deleted!', null, 200);
-
+            return new ApiResponseResources(true, 'Gedung berhasil dihapus!', null, 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            return new ApiResponseResources(false, 'Failed to delete Building! ' . $e->getMessage(), null, 500);
+            return new ApiResponseResources(false, 'Gagal menghapus data gedung! ' . $e->getMessage(), null, 500);
         }
     }
 }
